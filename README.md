@@ -17,13 +17,6 @@ Faculty: Physical Science
 **Modern Linux Implementation (ss-based)**
 
 ```
-Obi Promise Uche  
-Registration Number: 2024924028  
-Course Code: NAU-CYB 221  
-Level: 200 Level  
-Department: Cyber Security  
-Faculty: Physical Science  
-NAU-CYB 221 – Cybersecurity Technology Practical Assignment
 ```
 
 ## Project Description
