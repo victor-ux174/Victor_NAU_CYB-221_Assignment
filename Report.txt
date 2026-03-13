@@ -1,0 +1,116 @@
+**Local Port Discovery and Service Identification Report**  
+**NAU-CYB 221 – Cybersecurity Technology**
+
+**Student Information**  
+Name: Ubah Victor ikechukwu 
+Registration Number: 2024924044
+Course Code: NAU-CYB 221
+Level: 200l
+Department: Cyber Security
+Faculty: Physical Science
+
+**Date of Practical Exercise:** March 03, 2026  
+Environment: ChromeOS → Linux (Beta) / Crostini container  
+Tool Used: Custom C++ local port scanner (ss-based version reading `ss -ltnup` output)
+
+Ports Detected and Their Purpose
+The tool (executed with `sudo`) identified **two TCP listening ports** in the current Crostini environment:
+
+1. **TCP 5036** bound to **127.0.0.1**  
+   - Owning process: `code` (PID 783)  
+   - Likely software: Visual Studio Code server / Code-OSS (remote or container mode)  
+   - Purpose: Internal endpoint used by VS Code for extension host, debug adapter protocol (DAP), language server protocol (LSP), live share, port forwarding proxy, or embedded webview / preview servers.  
+   - Binding to loopback (127.0.0.1) ensures the port is **never exposed** outside the Linux container.
+
+2. **TCP 45017** bound to **127.0.0.1**  
+   - Owning process: `code` (PID 584)  
+   - Likely software: Another VS Code instance or child process (extension host, renderer helper, etc.)  
+   - Purpose: Ephemeral / dynamically allocated port used for inter-process communication inside VS Code (common when multiple windows, remote-SSH sessions, or heavy extension usage is active).  
+   - Also strictly bound to loopback → no external reachability.
+
+**Notable observations:**
+- No UDP ports appeared in the listening state in this snapshot.
+- No ports bound to `0.0.0.0`, `::`, or any non-loopback interface.
+- No high-risk / legacy services detected.
+
+### Exposed vs Local-Only Classification
+
+- **TCP 5036** → **Local-only** (127.0.0.1) → Risk level: **Negligible**  
+  No remote access is possible — even if the host is compromised or network traffic is intercepted.
+
+- **TCP 45017** → **Local-only** (127.0.0.1) → Risk level: **Negligible**  
+  Same isolation guarantees as above.
+
+**No exposed ports** (0.0.0.0 / public IPv4 / public IPv6) were found in listening state.
+
+**No high-interest ports** from the monitored list were open:
+(21/FTP, 22/SSH, 23/Telnet, 25/SMTP, 53/DNS, 80/HTTP, 110/POP3, 139/NetBIOS, 143/IMAP, 443/HTTPS, 445/SMB, 3389/RDP, 3306/MySQL, 5432/PostgreSQL, 8080/http-alt, etc.)
+
+→ Attack surface is **extremely small** — typical for a minimal developer container with no server daemons running.
+
+### Why These Ports Matter in This Context
+
+Open / listening ports remain one of the most important **initial reconnaissance indicators**:
+
+- They allow attackers to fingerprint the operating system & software stack  
+- Match versions against exploit databases (Exploit-DB, CVE details)  
+- Target weak/default credentials or known vulnerabilities  
+- Launch automated exploitation frameworks
+
+In this case:
+
+- Both ports belong to the **same application family** (VS Code)  
+- Both are **intentionally loopback-bound**  
+- Both exist solely to support **active local development workflow**  
+- No unnecessary system services, web servers, databases, file shares, or remote access endpoints are listening
+
+This is a textbook example of **least functionality** and **defense in depth** at the container level — Crostini + VS Code defaults are doing a very good job of minimizing unnecessary exposure.
+
+### Security Controls and Hardening Recommendations
+
+Even though risk is already very low, the following steps can reduce visibility further:
+
+1. Close VS Code when not actively developing 
+   → Immediately removes both TCP 5036 and 45017 (and any other ephemeral VS Code ports)
+
+2. Limit VS Code features that open listeners
+   - Disable Live Server, Live Preview, or any extension that starts an HTTP server  
+   - Avoid running multiple VS Code windows simultaneously when possible  
+   - Use `--disable-extensions` flag for particularly sensitive sessions
+
+3. Check and clean ChromeOS Linux port forwarding rules
+   Settings → Linux (Beta) → Port Forwarding →  
+   → Delete any rules that are no longer needed (prevents accidental external exposure even if a port is later bound to 0.0.0.0)
+
+4. Periodic monitoring (good hygiene)
+   Run one of these commands regularly:  
+   ```bash
+   sudo ss -ltnup
+   sudo ./port_inspector
+   sudo lsof -iTCP -iUDP -n -P | grep LISTEN
+   ```
+
+5. Network-layer awareness
+   - Use ChromeOS built-in VPN when on public Wi-Fi  
+   - Be aware that Crostini networking is NAT’d through the host — most external exposure would require explicit port forwarding rules (which are off by default)
+
+### Conclusion
+
+This exercise using a custom `ss`-based C++ port scanner clearly shows that **visibility enables control**.
+
+My current Crostini environment has **only two listening ports**, both:
+
+- Owned by Visual Studio Code  
+- Strictly bound to the loopback interface  
+- Present only to support active software development  
+- Carrying effectively **zero remote exploit risk**
+
+No legacy services, no administrative interfaces, no file-sharing protocols, and no remote desktop / shell listeners are active.
+
+This minimal footprint is a strong demonstration of how modern container + OS design (ChromeOS Crostini) can enforce **least privilege and least functionality** by default — significantly reducing the traditional Linux attack surface.
+
+Further reduction (down to zero listening ports) is easily achievable by simply closing VS Code when development pauses.
+
+Prepared by: Name: Ubah Victor ikechukwu  
+Course: NAU-CYB 221 – Cybersecurity Technology  
+Date: March 03, 2026
